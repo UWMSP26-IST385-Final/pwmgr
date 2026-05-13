@@ -1,5 +1,5 @@
 # Documentation
-Use markup. This [cheatsheet]([https://sphinx-tutorial.readthedocs.io/cheatsheet](https://gist.github.com/redlotus/3bc387c2591e3e908c9b63b97b11d24e)) may be helpful. You can use `<arg_name> (<type>):` in docstrings if no type hints are used.
+Use markup. This [cheatsheet](https://gist.github.com/redlotus/3bc387c2591e3e908c9b63b97b11d24e) may be helpful. You can use `<arg_name> (<type>):` in docstrings if no type hints are used.
 Example docstring:
 ```python
 def add(x: int, y) -> int:
