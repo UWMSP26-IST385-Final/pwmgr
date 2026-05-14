@@ -9,7 +9,7 @@ import string
 import math
 from itertools import combinations
 
-# TODO: PEP257 & "Google style" docstrings
+# TODO: "Google style" docstrings
 # TODO: transition from TUI to GUI
 
 # Literal type allows static checking of keys into CHARSETS and function parameters
@@ -21,10 +21,12 @@ CHARSETS: dict[CharsetKey, str] = {
     "numbers": string.digits,
 }
 
+AMBIGUOUS_CHARS = frozenset("|Il1O0")
 
-def make_entropy_map() -> dict[frozenset[CharsetKey], float]:
-    """Map every possible combination of CHARSETS to the # of bits of entropy
-    per character of a string using the given combination
+
+def make_entropy_map() -> dict[tuple[frozenset[CharsetKey], bool], float]:
+    """Map every possible combination of charsets (and ambiguous char toggle)
+    to the number of bits of entropy per character.
     """
     ret = {}
     # n choose r, for every r such that 0 < r <= n
@@ -32,12 +34,36 @@ def make_entropy_map() -> dict[frozenset[CharsetKey], float]:
     for r in range(1, len(CHARSETS) + 1):
         # each choice is a tuple of keys for the CHARSETS dict
         for choice in combinations(CHARSETS, r):
-            size = sum(len(CHARSETS[n]) for n in choice)
-            ret[frozenset(choice)] = math.log2(size)
+            pool: set[str] = set()
+            for c in choice:
+                pool.update(CHARSETS[c])
+            ambig_pool = pool - AMBIGUOUS_CHARS
+
+            # key into map is (charset combination, avoid_ambiguous) so both outcomes are mapped out
+            ret[(frozenset(choice), False)] = math.log2(len(pool))
+            ret[(frozenset(choice), True)] = (
+                math.log2(len(ambig_pool)) if ambig_pool else 0.0
+            )
     return ret
 
 
 ENTROPY = make_entropy_map()
+
+
+def min_required_chars(
+    selection: set[CharsetKey],
+    min_numbers: int = 1,
+    min_special: int = 1,
+) -> int:
+    """Total characters required by per-type minimums for the given selection."""
+    return sum(
+        max(1, min_numbers)
+        if k == "numbers"
+        else max(1, min_special)
+        if k == "special"
+        else 1
+        for k in selection
+    )
 
 
 def check_bad_password(password: str) -> bool:  # TODO: implement known bad pw checking
@@ -53,60 +79,95 @@ def check_bad_password(password: str) -> bool:  # TODO: implement known bad pw c
     return False
 
 
-def compute_entropy(charset: str | frozenset[CharsetKey], length: int) -> float:
-    """Compute entropy of a password of a given length made from the provided character set"""
+def compute_entropy(
+    char_selection: set[CharsetKey] | frozenset[CharsetKey],
+    length: int,
+    avoid_ambiguous: bool = False,
+) -> float:
+    """Compute entropy of a password of a given length made from the provided character set."""
     # TODO: document
-    entropy_per_char: float
-    if isinstance(charset, str):
-        entropy_per_char = math.log2(len(set(charset)))
-    else:
-        entropy_per_char = ENTROPY[charset]
-
-    return entropy_per_char * length
+    if not char_selection or length <= 0:
+        return 0.0
+    return ENTROPY[(frozenset(char_selection), avoid_ambiguous)] * length
 
 
 def meets_entropy(
-    length: int, char_selection: frozenset[CharsetKey], min_entropy: float = 75
+    length: int,
+    char_selection: set[CharsetKey],
+    min_entropy: float = 75,
+    avoid_ambiguous: bool = False,
 ) -> bool:
     """Returns if a password of a given length, made of a given set of characters meets
     a minimum entropy value.
     """
     # TODO: document
-    return compute_entropy(char_selection, length) >= min_entropy
+    return compute_entropy(char_selection, length, avoid_ambiguous) >= min_entropy
 
 
 def generate(
-    length: int, char_selection: set[CharsetKey] | None = None
-) -> tuple[str, float]:
+    length: int,
+    char_selection: set[CharsetKey] | None = None,
+    min_numbers: int = 1,
+    min_special: int = 1,
+    avoid_ambiguous: bool = False,
+) -> str:
     """Generate a secure random password with adjustable parameters and strength enforcement."""
     # TODO: document (incl. exceptions)
-    # TODO: also allow specification of # of characters from "special"
     if char_selection is None:
-        char_selection = {"lowercase", "uppercase", "numbers", "special"}
+        char_selection = set(CHARSETS.keys())
 
     if length < 14:
         raise ValueError("Password length must be 14 characters or greater.")
     elif length > 64:
-        raise ValueError("Password length cannot be grater than 64 characters.")
+        raise ValueError("Password length cannot be greater than 64 characters.")
 
-    password: list[str]
-    available_chars = "".join(CHARSETS[key] for key in char_selection)
+    if not char_selection:
+        raise ValueError("At least one character set must be selected.")
 
-    # At least one random choice of each character
-    password = [secrets.choice(CHARSETS[key]) for key in char_selection]
-    # fill remanining characters
+    # the "pythonic" way to filter a dictionary
+    # creates a filtered copy of CHARSETS including only the provided char_selection
+    # allows making indidivdual choices of character type based on provided minimums
+    char_pools = {
+        key: "".join(
+            c for c in CHARSETS[key] if not avoid_ambiguous or c not in AMBIGUOUS_CHARS
+        )
+        for key in char_selection
+    }
+    available_chars = "".join(char_pools.values())
+
+    if not available_chars:
+        raise ValueError("No available characters to generate password.")
+
+    # at least one character from each charset or set minimum
+    password: list[str] = []
+    for key, pool in char_pools.items():
+        if not pool:
+            continue
+
+        required = 1
+        if key == "numbers":
+            required = max(1, min_numbers)
+        elif key == "special":
+            required = max(1, min_special)
+
+        password.extend(secrets.choice(pool) for _ in range(required))
+
+    if len(password) > length:
+        raise ValueError("Minimum character requirements exceed total password length.")
+
+    # fill remaining characters from combined set
     password.extend(
         secrets.choice(available_chars) for _ in range(length - len(password))
     )
+
     # NOTE: secrets.SystemRandom().shuffle(password) accomplishes the same and is cleaner, but is platform-dependant
+    # shuffle bc y not
     # see: Fisher-Yates shuffle
     for i in range(length - 1, 0, -1):
         j = secrets.randbelow(i + 1)
         password[i], password[j] = password[j], password[i]
 
-    generated = "".join(char for char in password)
-    entropy = compute_entropy(available_chars, length)
-    return generated, entropy
+    return "".join(password)
 
 
 def main():
@@ -116,7 +177,7 @@ def main():
             if length < 14:
                 print("Password length must be 14 characters or greater.\n")
             elif length > 64:
-                print("Password length cannot be grater than 64 characters\n")
+                print("Password length cannot be greater than 64 characters\n")
             else:
                 break
         except ValueError:
@@ -126,36 +187,42 @@ def main():
         choices = list(CHARSETS.keys())
         selection: set[CharsetKey]
         print()
-        print("Generation Settings - Make a comma seperated selection (min. 1):")
+        print("Generation Settings - Make a comma separated selection (min. 1):")
         print("\t[1] - Uppercase letters")
         print("\t[2] - Lowercase letters")
         print("\t[3] - Special Characters")
         print("\t[4] - Numbers")
+        print("\t[5] - Avoid Ambiguous (I, l, 1, O, 0)")
         print()
         try:
             indicies = [int(i) for i in input("Selection: ").split(",")]
-            if len(indicies) == 0:
+            # [5] is a flag for avoid_ambiguous, not a charset index; filter it out before lookup
+            avoid_ambig = 5 in indicies
+            charset_indices = [i for i in indicies if i != 5]
+
+            if len(charset_indices) == 0:
                 print("Invalid selection, please make at least one selection")
                 continue
-            if not all((i - 1) < len(choices) for i in indicies):
+            if not all((i - 1) < len(choices) for i in charset_indices):
                 print("Invalid selection, each choice must be in the range (1,4)")
                 continue
 
-            selection = {choices[(i - 1)] for i in indicies}
+            selection = {choices[(i - 1)] for i in charset_indices}
         except ValueError:
             print("Please enter a valid, comma-separated list of numeric choices")
             continue
 
-        if not meets_entropy(length, frozenset(selection)):
+        if not meets_entropy(length, selection, avoid_ambiguous=avoid_ambig):
             print("Provided configuration and password length is too weak!")
             continue
         break
 
-    result = generate(length, selection)
+    pwd = generate(length, selection, avoid_ambiguous=avoid_ambig)
+    entropy = compute_entropy(selection, length, avoid_ambig)
     print("\n")
-    print(f"Your password is: {result[0]}")
+    print(f"Your password is: {pwd}")
     # TODO: human readable password scale
-    print(f"Password entropy: {result[1]} bits")
+    print(f"Password entropy: {entropy:.2f} bits")
 
 
 if __name__ == "__main__":
