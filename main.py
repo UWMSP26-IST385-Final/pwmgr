@@ -1,3 +1,5 @@
+"""Graphical user interface for the secure password generator."""
+
 import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
@@ -5,20 +7,24 @@ import generator
 
 ctk.set_appearance_mode("system")
 
+# Minimum entropy threshold required before the Generate button is enabled.
 MIN_ENTROPY = 75.0
 
 
 class PasswordGeneratorApp(ctk.CTk):
     def __init__(self):
+        """Initialize the password generator window and Tkinter variables."""
         super().__init__()
         self.title("Password Generator")
         self.resizable(False, False)
 
+        # Tkinter variables store user-selected password settings.
         self.length_var = tk.IntVar(value=16)
         self.min_numbers_var = tk.IntVar(value=1)
         self.min_special_var = tk.IntVar(value=1)
         self.avoid_ambig_var = tk.BooleanVar(value=False)
 
+        # Each character set is controlled by its own checkbox variable.
         self.charsets_vars: dict[generator.CharsetKey, tk.BooleanVar] = {
             "uppercase": tk.BooleanVar(value=True),
             "lowercase": tk.BooleanVar(value=True),
@@ -41,6 +47,7 @@ class PasswordGeneratorApp(ctk.CTk):
             var.trace_add("write", lambda *_: self._update_ui())
 
     def _build_ui(self):
+        """Create and arrange all user interface widgets."""
         f = ctk.CTkFrame(self, fg_color="transparent")
         f.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
 
@@ -116,9 +123,15 @@ class PasswordGeneratorApp(ctk.CTk):
         )
 
     def _on_length(self, value: float):
+        """Update the displayed password length when the slider changes.
+
+        Args:
+            value: Current value from the length slider.
+        """
         self.length_label.configure(text=str(int(value)))
 
     def _update_ui(self):
+        """Validate current settings and update the interface state."""
         try:
             length = self.length_var.get()
             min_num = self.min_numbers_var.get()
@@ -168,11 +181,16 @@ class PasswordGeneratorApp(ctk.CTk):
             self.gen_btn.configure(state="normal")
 
     def _copy(self):
+        """Copy the generated password to the system clipboard."""
         if pwd := self.result_var.get():
             self.clipboard_clear()
             self.clipboard_append(pwd)
 
     def _generate(self):
+        """Generate a password from the current settings and display it.
+
+        Shows an error message if the generator rejects the current settings.
+        """
         try:
             pwd = generator.generate(
                 length=self.length_var.get(),
@@ -187,6 +205,7 @@ class PasswordGeneratorApp(ctk.CTk):
 
 
 def main():
+    """Start the password generator application."""
     app = PasswordGeneratorApp()
     app.mainloop()
 
