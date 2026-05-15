@@ -5,7 +5,7 @@ Program: Sam Wirth, Cameron Hall | Documentation: Noel Pang
 <img width="881" height="634" alt="image" src="https://github.com/user-attachments/assets/ff085960-acef-4aab-aa7b-1bd0eecc0720" />
 
 
-PWMGR is a password management application with a text-based interface, running off of the command line. It generates passwords based on the principle of bits of entropy and then calculates that number- a password with a high entropy (randomness) value will take longer to break through brute force attacks, and thus, is stronger. However, since randomness makes it difficult to remember, password management applications are a convenient way to enhance security.
+PWMGR is a password management application with both a graphical and text-based command line interface. It generates passwords based on the principle of bits of entropy and then calculates that number- a password with a high entropy (randomness) value will take longer to break through brute force attacks, and thus, is stronger. However, since randomness makes it difficult to remember, password management applications are a convenient way to enhance security.
 
 Bits of entropy is determined by the equation $E = L \times \log_2(R)$, where:
 - $E$ = password entropy
