@@ -66,17 +66,24 @@ def min_required_chars(
     )
 
 
-def check_bad_password(password: str) -> bool:  # TODO: implement known bad pw checking
-    """Checks paramater against (todo) dictionary of known bad passwords
+def check_bad_password(password: str, filename: str = "bad_passwords.txt") -> bool:
+    """Checks whether a password appears in a text file of known bad passwords.
 
     Args:
-        password: A password to check against knonw bad passwords
+        password: A password to check against known bad passwords.
+        filename: Path to the bad passwords file.
 
     Returns:
-        True if password is known to be bad (found in database), False if not
+        True if password is known to be bad (found in file), False if not.
 
     """
-    return False
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            bad_passwords = {line.strip().lower() for line in f if line.strip()}
+        return password.lower() in bad_passwords
+    except FileNotFoundError:
+        print(f"Warning: {filename} was not found. Skipping bad password check.")
+        return False
 
 
 def compute_entropy(
