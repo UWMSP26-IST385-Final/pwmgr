@@ -17,8 +17,6 @@ jobs:
             artifact: pwmgr-linux
           - os: windows-latest
             artifact: pwmgr-windows
-          - os: macos-13
-            artifact: pwmgr-macos-intel
           - os: macos-latest
             artifact: pwmgr-macos-arm64
 
