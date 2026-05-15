@@ -1,6 +1,6 @@
 IST 385 Final: Password Generator Application
 
-Program: Sam Wirth, Documentation: Noel Pang
+Program: Sam Wirth, Cameron Hall | Documentation: Noel Pang
 
 PWMGR is a password management application with a text-based interface, running off of the command line. It generates passwords based on the principle of bits of entropy and then calculates that number- a password with a high entropy (randomness) value will take longer to break through brute force attacks, and thus, is stronger. However, since randomness makes it difficult to remember, password management applications are a convenient way to enhance security.
 
