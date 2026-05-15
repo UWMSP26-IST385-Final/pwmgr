@@ -1,6 +1,5 @@
 """
 IST385 Final Project
-todo...
 """
 
 import secrets
@@ -9,8 +8,8 @@ import string
 import math
 from itertools import combinations
 
-# TODO: "Google style" docstrings
-# TODO: transition from TUI to GUI
+# TODO: (if time provides) "Google style" docstrings
+# TODO: (if time provides) transition from TUI to GUI
 
 # Literal type allows static checking of keys into CHARSETS and function parameters
 CharsetKey = Literal["uppercase", "lowercase", "special", "numbers"]
@@ -67,15 +66,14 @@ def min_required_chars(
 
 
 def check_bad_password(password: str, filename: str = "bad_passwords.txt") -> bool:
-    """Checks whether a password appears in a text file of known bad passwords.
+    """Check whether a password appears in a file of known bad passwords.
 
     Args:
-        password: A password to check against known bad passwords.
+        password: Password to check against the known bad password list.
         filename: Path to the bad passwords file.
 
     Returns:
-        True if password is known to be bad (found in file), False if not.
-
+        bool: True if the password is found in the file, False otherwise.
     """
     try:
         with open(filename, "r", encoding="utf-8") as f:
@@ -91,7 +89,19 @@ def compute_entropy(
     length: int,
     avoid_ambiguous: bool = False,
 ) -> float:
-    """Compute entropy of a password of a given length made from the provided character set."""
+    """Compute estimated password entropy.
+
+    Entropy is calculated by multiplying the entropy per character for the
+    selected character pool by the requested password length.
+
+    Args:
+        char_selection: Character sets included in the password.
+        length: Desired password length.
+        avoid_ambiguous: Whether ambiguous characters are excluded.
+
+    Returns:
+        float: Estimated password entropy in bits.
+    """
     # TODO: document
     if not char_selection or length <= 0:
         return 0.0
@@ -104,8 +114,17 @@ def meets_entropy(
     min_entropy: float = 75,
     avoid_ambiguous: bool = False,
 ) -> bool:
-    """Returns if a password of a given length, made of a given set of characters meets
-    a minimum entropy value.
+    """Check whether a password configuration meets the entropy requirement.
+
+    Args:
+        length: Desired password length.
+        char_selection: Character sets included in the password.
+        min_entropy: Minimum entropy value required for approval.
+        avoid_ambiguous: Whether ambiguous characters are excluded.
+
+    Returns:
+        bool: True if the configuration meets or exceeds the entropy requirement,
+        False otherwise.
     """
     # TODO: document
     return compute_entropy(char_selection, length, avoid_ambiguous) >= min_entropy
@@ -118,7 +137,29 @@ def generate(
     min_special: int = 1,
     avoid_ambiguous: bool = False,
 ) -> str:
-    """Generate a secure random password with adjustable parameters and strength enforcement."""
+    """Generate a secure random password.
+
+    The password is created using Python's secrets module. The function ensures
+    that selected character sets are represented in the final password and then
+    shuffles the result so required characters are not grouped together.
+
+    Args:
+        length: Desired password length. Must be between 14 and 64 characters.
+        char_selection: Character sets to include. If None, all character sets
+            are used.
+        min_numbers: Minimum number of numeric characters required.
+        min_special: Minimum number of special characters required.
+        avoid_ambiguous: Whether ambiguous characters such as I, l, 1, O, and 0
+            should be excluded.
+
+    Returns:
+        str: Generated password.
+
+    Raises:
+        ValueError: If the length is outside the allowed range, no character set
+        is selected, no characters are available, or the minimum character
+        requirements exceed the requested length.
+    """
     # TODO: document (incl. exceptions)
     if char_selection is None:
         char_selection = set(CHARSETS.keys())
@@ -178,6 +219,9 @@ def generate(
 
 
 def main():
+    
+    """Run the command-line password generator interface."""
+    
     while True:
         try:
             length = int(input("Enter desired password length: "))
